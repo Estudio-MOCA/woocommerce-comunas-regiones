@@ -12,9 +12,12 @@ jQuery(function ($) {
         return comunas;
     }
 
-    $('#billing_city').change(function (e) {
+    var $billingCity = $('#billing_city');
+    var $comunas = $('#billing_state');
+    var $selectedComuna = $comunas.find('option:selected');
+
+    $billingCity.change(function (e) {
         var region = this.value;
-        var $comunas = $('#billing_state');
         var comunas = search_comuna(region);
         $comunas.html('');
 
@@ -24,4 +27,15 @@ jQuery(function ($) {
             $comunas.append('<option value="' + comuna.comuna + '">' + comuna.comuna + '</option>');
         }
     });
+
+    window.setTimeout(function () {
+        $billingCity.trigger('change');
+
+        if ($selectedComuna.length) {
+            var selectedComuna = $selectedComuna.text();
+            $('#billing_state option').prop('selected', false);
+            $('#billing_state option[value="' + selectedComuna + '"]').prop('selected', true);
+            $comunas.trigger('change');
+        }
+    }, 500);
 });
