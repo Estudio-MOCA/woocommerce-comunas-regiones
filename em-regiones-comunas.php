@@ -1,14 +1,12 @@
 <?php
-
 /**
  * Plugin Name: Regiones y Comunas de Chile
  * Plugin URI: https://estudiomoca.cl/
  * Description: Comunas y regiones para Woocommerce
- * Version: 1.0.20201501
+ * Version: 20.01.16
  * Author: Estudio MOCA
  * Author URI: https://estudiomoca.cl/
  * Text Domain: em_regiones_comunas
- * Requires at least: 5.2.0
  * Requires PHP: 5.6.20
 
  * WC requires at least: 3.6.0
@@ -16,31 +14,43 @@
  * @package Em_Regiones_Comunas
 */
 
+/**
+ * Class Em_Regiones_Comunas clase principal del plugin
+ * @property Em_Regiones_Comunas_Install $installer
+ * @property array $comunas
+ */
 class Em_Regiones_Comunas
 {
-    private $comunas = null;
+    private $comunas;
+    private $installer;
 
     public function __construct()
     {
+        include "inc/em-install.php";
+
+        $this->installer = new Em_Regiones_Comunas_Install;
         add_filter('woocommerce_get_country_locale', [$this, 'filter_woocommerce_get_country_locale'], 10);
         add_filter('woocommerce_states', [$this, 'custom_woocommerce_states']);
         add_filter('woocommerce_checkout_fields', [$this, 'woocommerce_checkout_fields']);
         add_action('wp_enqueue_scripts', [$this, 'scripts']);
         add_action('wp_head', [$this, 'wp_head']);
+        register_activation_hook( __FILE__, [$this->installer, 'install'] );
     }
 
     public function wp_head()
     {
-        $comunas = $this->get_comunas();
-        $comunas_json = json_encode($comunas);
-        echo '<script>
-        window.comunas = ' . $comunas_json . '; 
-        </script>';
+        if (is_cart() || is_checkout()) {
+            $comunas = $this->get_comunas();
+            $comunas_json = json_encode($comunas);
+            echo '<script>
+            window.comunas = ' . $comunas_json . '; 
+            </script>';
+        }
     }
 
     public function scripts()
     {
-        wp_enqueue_script('em_regiones_comunas', plugin_dir_url(__FILE__) . 'assets/js/em-regiones-comunas.js', ['jquery'], "1.0." . time(), true);
+        wp_enqueue_script('em_regiones_comunas', plugin_dir_url(__FILE__) . 'assets/js/em-regiones-comunas.js', ['jquery'], "1.0", true);
     }
 
     public function get_comunas($region_name = null)
@@ -57,9 +67,9 @@ class Em_Regiones_Comunas
             $st_where = " AND r.region='{$region_name}' ";
         }
 
-        $sql = "SELECT co.*, p.provincia, r.* FROM {$wpdb->prefix}cl_comunas AS co
-                    INNER JOIN {$wpdb->prefix}cl_provincias AS p ON co.provincia_id=p.id 
-                    INNER JOIN {$wpdb->prefix}cl_regiones AS r ON p.region_id=r.id 
+        $sql = "SELECT co.*, p.provincia, r.* FROM {$this->installer->comunas_table} AS co
+                    INNER JOIN {$this->installer->provincias_table} AS p ON co.provincia_id=p.id 
+                    INNER JOIN {$this->installer->regiones_table} AS r ON p.region_id=r.id 
                     WHERE 1=1 {$st_where} ORDER BY co.comuna";
 
         $this->comunas = $results = $wpdb->get_results($sql);
@@ -82,10 +92,6 @@ class Em_Regiones_Comunas
 
         $fields['shipping']['shipping_city'] = $city_args;
         $fields['billing']['billing_city'] = $city_args;
-
-        //$fields['shipping']['shipping_state']['type'] = 'select';
-        //$fields['billing']['billing_state']['type'] = 'select';
-
         return $fields;
     }
 
@@ -110,7 +116,7 @@ class Em_Regiones_Comunas
     public function get_regiones()
     {
         global $wpdb;
-        return $wpdb->get_results("SELECT * FROM {$wpdb->prefix}cl_regiones");
+        return $wpdb->get_results("SELECT * FROM {$this->installer->regiones_table}");
     }
 }
 
